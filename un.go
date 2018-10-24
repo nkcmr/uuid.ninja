@@ -1,13 +1,18 @@
-// +build js,wasm
-
-package un
+package main
 
 import (
-	"syscall/js"
+	"net/http"
 
 	"github.com/satori/go.uuid"
 )
 
-func generate_v4() js.Value {
-	return js.ValueOf(uuid.NewV4())
+type config struct {
+
+}
+
+func main() {
+
+}
+
+func provideHandler() http.Handler {
 }

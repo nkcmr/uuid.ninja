@@ -32,6 +32,16 @@ const indexTemplate = `<!DOCTYPE html>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width">
     <title>uuid ninja</title>
+	<style>
+		.problem {
+			margin-bottom: 0.8em;
+			padding: 0.25em 0.5em;
+		}
+		.problem.error {
+			background-color: #da304c;
+			color: white;
+		}
+	</style>
 </head>
 <body>
     <div id="main">
@@ -49,6 +59,9 @@ const indexTemplate = `<!DOCTYPE html>
 
 			<fieldset name="hash_based_uuid">
 				<legend>uuid v3 / v5</legend>
+				{{- range $index, $element := .RangeProblems "hash_uuid" }}
+				<div class="problem {{$element.Kind}}">error: {{$element.Message}}</div>
+				{{- end }}
 				<select name="uuidvers" id="version">
 					<option value="v3"{{if eq .Req.UUIDHashVersion "v3"}} selected{{end}}>version 3</option>
 					<option value="v5"{{if eq .Req.UUIDHashVersion "v5"}} selected{{end}}>version 5</option>
@@ -73,6 +86,9 @@ const indexTemplate = `<!DOCTYPE html>
 			</fieldset>
 			<fieldset name="version_four">
 				<legend>uuid v4</legend>
+				{{- range $index, $element := .RangeProblems "uuidv4" }}
+				<div class="problem {{$element.Kind}}">error: {{$element.Message}}</div>
+				{{- end }}
 				<pre>{{ .ResultRandoCase }}</pre>
 			</fieldset><br />
 			<button type="submit" class="pure-button pure-button-primary">Submit</button>
@@ -343,6 +359,14 @@ func (m multiRenderResponse) ResultRandoCase() string {
 		return strings.ToUpper(m.ResultRando.String())
 	}
 	return m.ResultRando.String()
+}
+
+func (m multiRenderResponse) RangeProblems(category string) []problemMessage {
+	s, ok := m.Problems[category]
+	if !ok {
+		return []problemMessage{}
+	}
+	return s
 }
 
 type resultResponse struct {

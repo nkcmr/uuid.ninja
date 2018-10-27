@@ -8,3 +8,6 @@ Gopkg.lock: Gopkg.toml
 vendor/.ok: Gopkg.lock
 	dep ensure -v -vendor-only
 	touch $@
+
+clean:
+	rm -rf vendor

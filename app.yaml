@@ -1,0 +1,4 @@
+runtime: go111
+service: uuid_ninja
+liveness_check:
+  path: /_health

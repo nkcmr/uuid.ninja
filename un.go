@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"html/template"
+	"io"
 	"io/ioutil"
 	"log"
 	"mime"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	httptransport "github.com/go-kit/kit/transport/http"
@@ -21,9 +23,6 @@ type ctxKey int
 const (
 	ctxAcceptHeader ctxKey = iota
 )
-
-type config struct {
-}
 
 var index *template.Template
 
@@ -121,7 +120,11 @@ func init() {
 }
 
 func main() {
-	http.ListenAndServe(":8080", provideHandler(provideService()))
+	port := "8080"
+	if envPort := os.Getenv("PORT"); envPort != "" {
+		port = envPort
+	}
+	http.ListenAndServe(fmt.Sprintf(":%s", port), provideHandler(provideService()))
 }
 
 func resultResponseEncode(ctx context.Context, w http.ResponseWriter, r interface{}) error {
@@ -182,6 +185,9 @@ func provideHandler(svc service) http.Handler {
 		return req
 	}
 
+	r.Get("/_health", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		io.WriteString(w, "ok\n")
+	}))
 	r.Get("/", httptransport.NewServer(
 		svc.multiRender,
 		func(_ context.Context, r *http.Request) (interface{}, error) {

@@ -128,9 +128,14 @@ const indexTemplate = `<!DOCTYPE html>
 		</form>
 		<hr />
 		<small>made out of boredom by <a href="https://nick.comer.io/">nick comer</a></small><br />
-		<small>source: https://github.com/nkcmr/uuid.ninja</small>
+		<small>source: <a href="https://github.com/nkcmr/uuid.ninja">github</a></small><br />
 		<small>copyright &copy; mit licensed 2018</small>
 	</div>
+	<script>
+	window.ga = function () { ga.q.push(arguments) }; ga.q = []; ga.l = +new Date;
+	ga('create', 'UA-88901963-2', 'auto'); ga('send', 'pageview')
+	</script>
+	<script src="https://www.google-analytics.com/analytics.js" async defer></script>
 </body>
 </html>
 `

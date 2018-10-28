@@ -126,6 +126,10 @@ const indexTemplate = `<!DOCTYPE html>
 				<p>then voilà, a v4 UUID.</p>
 			</div>
 		</form>
+		<hr />
+		<small>made out of boredom by <a href="https://nick.comer.io/">nick comer</a></small><br />
+		<small>source: https://github.com/nkcmr/uuid.ninja</small>
+		<small>copyright &copy; mit licensed 2018</small>
 	</div>
 </body>
 </html>

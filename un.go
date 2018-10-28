@@ -388,22 +388,23 @@ func (svcImpl) multiRender(_ context.Context, r interface{}) (interface{}, error
 		Req:      req,
 		Problems: problemMap{},
 	}
-	switch req.UUIDHashVersion {
-	case "v3":
-		ns, err := uuid.FromString(req.UUIDHashNS)
-		if err != nil {
-			res.Problems.add("hash_uuid", "error", fmt.Sprintf("invalid uuid '%s'", req.UUIDHashNS))
-		} else {
-			res.ResultHash = uuid.NewV3(ns, req.UUIDHashName)
+	if req.UUIDHashNS != "" {
+		switch req.UUIDHashVersion {
+		case "v3":
+			ns, err := uuid.FromString(req.UUIDHashNS)
+			if err != nil {
+				res.Problems.add("hash_uuid", "error", fmt.Sprintf("invalid uuid '%s'", req.UUIDHashNS))
+			} else {
+				res.ResultHash = uuid.NewV3(ns, req.UUIDHashName)
+			}
+		case "v5":
+			ns, err := uuid.FromString(req.UUIDHashNS)
+			if err != nil {
+				res.Problems.add("hash_uuid", "error", fmt.Sprintf("invalid uuid '%s'", req.UUIDHashNS))
+			} else {
+				res.ResultHash = uuid.NewV5(ns, req.UUIDHashName)
+			}
 		}
-	case "v5":
-		ns, err := uuid.FromString(req.UUIDHashNS)
-		if err != nil {
-			res.Problems.add("hash_uuid", "error", fmt.Sprintf("invalid uuid '%s'", req.UUIDHashNS))
-		} else {
-			res.ResultHash = uuid.NewV5(ns, req.UUIDHashName)
-		}
-	case "":
 	}
 	randoHash, err := uuid.NewV4()
 	if err != nil {

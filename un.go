@@ -403,6 +403,7 @@ func (svcImpl) multiRender(_ context.Context, r interface{}) (interface{}, error
 		} else {
 			res.ResultHash = uuid.NewV5(ns, req.UUIDHashName)
 		}
+	case "":
 	}
 	randoHash, err := uuid.NewV4()
 	if err != nil {

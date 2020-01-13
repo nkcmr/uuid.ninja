@@ -1,3 +1,9 @@
+##### START OF PROJECT SPECIFIC IGNORES #####
+tmp/
+
+# Created by https://www.gitignore.io/api/go,macos,visualstudiocode
+# Edit at https://www.gitignore.io/?templates=go,macos,visualstudiocode
+
 ### Go ###
 # Binaries for programs and plugins
 *.exe
@@ -6,11 +12,14 @@
 *.so
 *.dylib
 
-# Test binary, build with `go test -c`
+# Test binary, built with `go test -c`
 *.test
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
 
 ### Go Patch ###
 /vendor/
@@ -43,3 +52,12 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+### VisualStudioCode ###
+.vscode/*
+
+### VisualStudioCode Patch ###
+# Ignore all local history of files
+.history
+
+# End of https://www.gitignore.io/api/go,macos,visualstudiocode

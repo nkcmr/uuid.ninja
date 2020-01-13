@@ -12,10 +12,11 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/go-zoo/bone"
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 )
 
 type ctxKey int
@@ -46,7 +47,7 @@ const indexTemplate = `<!DOCTYPE html>
 <body>
     <div id="main">
 		<h2>uuid ninja</h2>
-		<form class="pure-form pure-form-stacked" action="/" method="POST">
+		<form action="/" method="POST">
 			<fieldset name="global_opts">
 				<legend>global options</legend>
 				<label for="uppercase">
@@ -68,7 +69,6 @@ const indexTemplate = `<!DOCTYPE html>
 				</select><br />
 				<input
 					type="text"
-					class="pure-input-2-3"
 					name="uuidns"
 					placeholder="namespace uuid"
 					style="min-width:25em;"
@@ -76,7 +76,6 @@ const indexTemplate = `<!DOCTYPE html>
 					/><br />
 				<input
 					type="text"
-					class="pure-input-2-3"
 					name="uuidname"
 					placeholder="name (ex. 'www.google.com')"
 					style="min-width:25em;"
@@ -91,7 +90,7 @@ const indexTemplate = `<!DOCTYPE html>
 				{{- end }}
 				<pre>{{ .ResultRandoCase }}</pre>
 			</fieldset><br />
-			<button type="submit" class="pure-button pure-button-primary">Submit</button>
+			<button type="submit">Submit</button>
 			<h3 id="#api">api</h3>
 			<div style="max-width:30em;">
 				<p>
@@ -129,7 +128,7 @@ const indexTemplate = `<!DOCTYPE html>
 		<hr />
 		<small>made out of boredom by <a href="https://nick.comer.io/">nick comer</a></small><br />
 		<small>source: <a href="https://github.com/nkcmr/uuid.ninja">github</a></small><br />
-		<small>copyright &copy; mit licensed 2018</small>
+		<small>copyright &copy; mit licensed {{ .CurrYear }}</small>
 	</div>
 	<script>
 	window.ga = function () { ga.q.push(arguments) }; ga.q = []; ga.l = +new Date;
@@ -149,7 +148,7 @@ func main() {
 	if envPort := os.Getenv("PORT"); envPort != "" {
 		port = envPort
 	}
-	http.ListenAndServe(fmt.Sprintf(":%s", port), provideHandler(provideService()))
+	_ = http.ListenAndServe(fmt.Sprintf(":%s", port), provideHandler(provideService()))
 }
 
 func resultResponseEncode(ctx context.Context, w http.ResponseWriter, r interface{}) error {
@@ -158,7 +157,7 @@ func resultResponseEncode(ctx context.Context, w http.ResponseWriter, r interfac
 	case nil, "application/json":
 		return httptransport.EncodeJSONResponse(ctx, w, r)
 	case "text/plain":
-		_, err := fmt.Fprintf(w, res.Result.String())
+		_, err := io.WriteString(w, res.Result.String())
 		return err
 	}
 	return nil
@@ -211,7 +210,7 @@ func provideHandler(svc service) http.Handler {
 	}
 
 	r.Get("/_health", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		io.WriteString(w, "ok\n")
+		_, _ = io.WriteString(w, "ok\n")
 	}))
 	r.Get("/", httptransport.NewServer(
 		svc.multiRender,
@@ -271,7 +270,7 @@ func provideHandler(svc service) http.Handler {
 				res := struct {
 					Error string `json:"error"`
 				}{Error: err.Error()}
-				httptransport.EncodeJSONResponse(ctx, w, res)
+				_ = httptransport.EncodeJSONResponse(ctx, w, res)
 			case "text/plain":
 				fmt.Fprintf(w, "error: %s\n", err)
 			default:
@@ -350,6 +349,10 @@ func (m multiRenderResponse) Uppercase() bool {
 
 func (m multiRenderResponse) Lavarand() bool {
 	return m.Req.lavarand
+}
+
+func (multiRenderResponse) CurrYear() string {
+	return fmt.Sprintf("%d", time.Now().UTC().Year())
 }
 
 func (m multiRenderResponse) HasHashResult() bool {

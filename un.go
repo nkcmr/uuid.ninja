@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -28,10 +29,11 @@ const (
 var index *template.Template
 
 const indexTemplate = `<!DOCTYPE html>
-<html>
+<html lang="en-US">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width">
+	<meta name="viewport" content="width=device-width">
+	<meta name="description" content="a simple and fast toolbelt for dealing with rfc4122 uuid tokens">
     <title>uuid ninja</title>
 	<style>
 		.problem {
@@ -47,6 +49,7 @@ const indexTemplate = `<!DOCTYPE html>
 <body>
     <div id="main">
 		<h2>uuid ninja</h2>
+		<p>this is a <a href="https://tools.ietf.org/html/rfc4122" target="_blank" rel="noopener noreferrer">rfc4122</a> uuid utility. use it to generate uuids (v3-5).</p>
 		<form action="/" method="POST">
 			<fieldset name="global_opts">
 				<legend>global options</legend>
@@ -63,24 +66,42 @@ const indexTemplate = `<!DOCTYPE html>
 				{{- range $index, $element := .RangeProblems "hash_uuid" }}
 				<div class="problem {{$element.Kind}}">error: {{$element.Message}}</div>
 				{{- end }}
-				<select name="uuidvers" id="version">
-					<option value="v3"{{if eq .Req.UUIDHashVersion "v3"}} selected{{end}}>version 3</option>
-					<option value="v5"{{if eq .Req.UUIDHashVersion "v5"}} selected{{end}}>version 5</option>
-				</select><br />
-				<input
-					type="text"
-					name="uuidns"
-					placeholder="namespace uuid"
-					style="min-width:25em;"
-					{{- if ne .Req.UUIDHashNS "" }}value="{{.Req.UUIDHashNS}}"{{end}}
-					/><br />
-				<input
-					type="text"
-					name="uuidname"
-					placeholder="name (ex. 'www.google.com')"
-					style="min-width:25em;"
-					{{- if ne .Req.UUIDHashName "" }}value="{{.Req.UUIDHashName}}"{{end}}
-					/><br />
+				<table>
+					<tr>
+						<td style="display:block;margin:0.5em;"><label for="version">uuid version</label></td>
+						<td>
+							<select name="uuidvers" id="version">
+								<option value="v3"{{if eq .Req.UUIDHashVersion "v3"}} selected{{end}}>version 3</option>
+								<option value="v5"{{if eq .Req.UUIDHashVersion "v5"}} selected{{end}}>version 5</option>
+							</select>
+						</td>
+					</tr>
+					<tr>
+						<td style="display:block;margin:0.5em;"><label for="uuidns">namespace uuid</label></td>
+						<td>
+							<input
+								id="uuidns"
+								type="text"
+								name="uuidns"
+								style="min-width:25em;"
+								{{- if ne .Req.UUIDHashNS "" }}value="{{.Req.UUIDHashNS}}"{{end}}
+								/>
+						</td>
+					</tr>
+					<tr>
+						<td style="display:block;margin:0.5em;"><label for="uuidname">name</label></td>
+						<td>
+							<input
+								id="uuidname"
+								type="text"
+								name="uuidname"
+								placeholder="ex. 'www.google.com'"
+								style="min-width:25em;"
+								{{- if ne .Req.UUIDHashName "" }}value="{{.Req.UUIDHashName}}"{{end}}
+								/>
+						</td>
+					</tr>
+				</table>
 				{{- if .HasHashResult }}<pre>{{ .ResultHashCase }}</pre>{{ end }}
 			</fieldset>
 			<fieldset name="version_four">
@@ -95,7 +116,7 @@ const indexTemplate = `<!DOCTYPE html>
 			<div style="max-width:30em;">
 				<p>
 					uuid ninja has a simple API that can be used to easily generate
-					UUIDs from anywhere that is capable of issuing an HTTP request.
+					a uuid from anywhere that is capable of issuing an http request.
 				</p>
 				<p>
 					the API looks for an <code>Accept</code> header. the supported
@@ -104,37 +125,32 @@ const indexTemplate = `<!DOCTYPE html>
 				</p>
 				<p>the available endpoints are as follows:</p>
 				<h4>v3 / v5</h4>
-				<p>the v3 endpoint allows you to generate v3 UUIDs:</p>
+				<p>the v3 endpoint allows you to generate a v3 uuid:</p>
 				<pre>
 > curl \
       -H "Accept: text/plain" \
       https://uuid.ninja/api/v3/67819eb0-8e4e-4b16-ac0c-963a1f8ecbd9/foo
   50da134d-b08f-3157-8315-f2ce12544465</pre>
 				<p>the expected URL is: <code>/api/v3/&lt;namespace uuid&gt;/&lt;name&gt;</code></p>
-				<p>to generate v5 UUIDs, the URL is almost the exact same, except that <code>v3</code> should be replaced with <code>v5</code>.</p>
+				<p>to generate a v5 uuid, the URL is almost the exact same, except that <code>v3</code> should be replaced with <code>v5</code>.</p>
 				<pre>
 > curl \
       -H "Accept: text/plain" \
       https://uuid.ninja/api/v5/67819eb0-8e4e-4b16-ac0c-963a1f8ecbd9/foo
   3f56b884-e5d1-5540-b182-aeb6440f09bb</pre>
 				<h4>v4</h4>
-				<p>to generate v4 UUIDs, is simpler, since no input is required. simply send a request to the v4 endpoint:</p>
+				<p>to generate a v4 uuid, is simpler, since no input is required. simply send a request to the v4 endpoint:</p>
 				<pre>
 > curl https://uuid.ninja/api/v4
   {"result":"5b30ca46-9b8b-48e0-b53a-1ccd4b3adc8f"}</pre>
-				<p>then voilà, a v4 UUID.</p>
+				<p>then voilà, a v4 uuid.</p>
 			</div>
 		</form>
 		<hr />
-		<small>made out of boredom by <a href="https://nick.comer.io/">nick comer</a></small><br />
-		<small>source: <a href="https://github.com/nkcmr/uuid.ninja">github</a></small><br />
+		<small>made out of boredom by <a target="_blank" rel="noopener noreferrer" href="https://nick.comer.io/">nick comer</a></small><br />
+		<small>source: <a target="_blank" rel="noopener noreferrer" href="https://github.com/nkcmr/uuid.ninja">github</a></small><br />
 		<small>copyright &copy; mit licensed {{ .CurrYear }}</small>
 	</div>
-	<script>
-	window.ga = function () { ga.q.push(arguments) }; ga.q = []; ga.l = +new Date;
-	ga('create', 'UA-88901963-2', 'auto'); ga('send', 'pageview')
-	</script>
-	<script src="https://www.google-analytics.com/analytics.js" async defer></script>
 </body>
 </html>
 `
@@ -210,7 +226,7 @@ func provideHandler(svc service) http.Handler {
 	}
 
 	r.Get("/_health", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = io.WriteString(w, "ok\n")
+		_, _ = fmt.Fprintf(w, "ok (%s)\n", runtime.Version())
 	}))
 	r.Get("/", httptransport.NewServer(
 		svc.multiRender,

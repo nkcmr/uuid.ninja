@@ -1,0 +1,17 @@
+name = "uuid-ninja-dev"
+type = "javascript"
+usage_model = "bundled"
+compatibility_flags = []
+workers_dev = true
+compatibility_date = "2021-10-16"
+
+[build]
+command = "npm install && npm run build"
+
+[build.upload]
+format = "service-worker"
+
+[env.production]
+name = "uuid-ninja"
+route = "uuid.ninja/*"
+zone_id = "f0dc709fefa9a5949e415f7bd46f46f7"

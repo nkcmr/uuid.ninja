@@ -135,13 +135,15 @@ async function handleRequest(request: Request): Promise<Response> {
       mp.uppercase = (url.searchParams.get("uppercase") || "") !== "";
       mp.resultRando = conditionUppercase(mp.uppercase, uuid.v4());
       const hashns = url.searchParams.get("uuidns") || "";
-      if (uuid.validate(hashns)) {
-        mp.uuidHashNS = hashns;
-      } else {
-        mp.problems.set("hash_uuid", [
-          ...(mp.problems.get("hash_uuid") || []),
-          { kind: "error", message: `invalid uuid: ${hashns}` },
-        ]);
+      if (hashns !== "") {
+        if (uuid.validate(hashns)) {
+          mp.uuidHashNS = hashns;
+        } else {
+          mp.problems.set("hash_uuid", [
+            ...(mp.problems.get("hash_uuid") || []),
+            { kind: "error", message: `invalid uuid: ${hashns}` },
+          ]);
+        }
       }
       mp.uuidHashName = url.searchParams.get("uuidname") || "";
       const uuidvers = url.searchParams.get("uuidvers");

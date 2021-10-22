@@ -3,7 +3,6 @@ import { renderToString } from "react-dom/server";
 
 export type MainProps = {
   uppercase: boolean;
-  lavarand: boolean;
   uuidVersion: "v3" | "v5";
   uuidHashNS: string;
   uuidHashName: string;

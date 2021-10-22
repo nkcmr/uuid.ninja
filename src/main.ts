@@ -94,7 +94,6 @@ async function handleRequest(request: Request): Promise<Response> {
   if (url.pathname === "/") {
     var mp: MainProps = {
       uppercase: false,
-      lavarand: false,
       uuidVersion: "v5",
       uuidHashNS: "",
       uuidHashName: "",
@@ -106,8 +105,7 @@ async function handleRequest(request: Request): Promise<Response> {
     if (request.method === "POST") {
       const rawparams = await request.text();
       const params = new URLSearchParams(rawparams);
-      mp.uppercase = params.has("uppercase");
-      mp.lavarand = params.has("lavarand");
+      mp.uppercase = (params.get("uppercase") || "") !== "";
       mp.resultRando = conditionUppercase(mp.uppercase, uuid.v4());
       const name = params.get("uuidname") || "";
       const ns = params.get("uuidns") || "";
@@ -134,10 +132,25 @@ async function handleRequest(request: Request): Promise<Response> {
           break;
       }
     } else {
-      mp.resultRando = conditionUppercase(
-        url.searchParams.has("uppercase"),
-        uuid.v4()
-      );
+      mp.uppercase = (url.searchParams.get("uppercase") || "") !== "";
+      mp.resultRando = conditionUppercase(mp.uppercase, uuid.v4());
+      const hashns = url.searchParams.get("uuidns") || "";
+      if (uuid.validate(hashns)) {
+        mp.uuidHashNS = hashns;
+      } else {
+        mp.problems.set("hash_uuid", [
+          ...(mp.problems.get("hash_uuid") || []),
+          { kind: "error", message: `invalid uuid: ${hashns}` },
+        ]);
+      }
+      mp.uuidHashName = url.searchParams.get("uuidname") || "";
+      const uuidvers = url.searchParams.get("uuidvers");
+      switch (uuidvers) {
+        case "v3":
+        case "v5":
+          mp.uuidVersion = uuidvers;
+          break;
+      }
     }
     return new Response(
       `<!DOCTYPE html>

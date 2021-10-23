@@ -30,7 +30,7 @@ const Main: React.FC<MainProps> = (props) => {
         </a>{" "}
         uuid utility. use it to generate uuids (v3-5).
       </p>
-      <form action="/" method="POST">
+      <form action="/" method="GET">
         <fieldset name="global_opts">
           <legend>global options</legend>
           <label htmlFor="uppercase">

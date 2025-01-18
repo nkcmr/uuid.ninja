@@ -1,5 +1,5 @@
-/// <reference types="@cloudflare/workers-types" />
-
+import { WorkerVersionMetadata } from "@cloudflare/workers-types";
+import { DurableObject } from "cloudflare:workers";
 import * as mime from "mime";
 import * as uuid from "uuid";
 import { MainProps, render } from "./view";
@@ -60,12 +60,14 @@ type Options = {
   uuidVersion: "v3" | "v5";
   uuidHashNS: string;
   uuidHashName: string;
+  uuidV7Seq?: number;
 };
 
 const PARAM_UPPERCASE = "uppercase";
 const PARAM_UUID_VERSION = "uuidvers";
 const PARAM_UUID_HASH_NS = "uuidns";
 const PARAM_UUID_HASH_NAME = "uuidname";
+const PARAM_UUID_MONO_SEQ = "seq";
 
 const parseUUIDVersion = (params: URLSearchParams): "v3" | "v5" => {
   let v = params.get(PARAM_UUID_VERSION) || "";
@@ -86,20 +88,70 @@ async function parseOptions(
       ? new URLSearchParams(await request.text())
       : url.searchParams;
 
+  let uuidV7Seq: number | undefined;
+  if (params.has(PARAM_UUID_MONO_SEQ)) {
+    uuidV7Seq = parseInt(params.get(PARAM_UUID_MONO_SEQ)!);
+  }
+
   return [
     {
       uppercase: (params.get(PARAM_UPPERCASE) || "") !== "",
       uuidVersion: parseUUIDVersion(params),
       uuidHashNS: params.get(PARAM_UUID_HASH_NS) || "",
       uuidHashName: params.get(PARAM_UUID_HASH_NAME) || "",
+      uuidV7Seq,
     },
     url,
     params,
   ];
 }
 
-async function handleRequest(request: Request): Promise<Response> {
+async function newV7(env: Env, opts: Options): Promise<string> {
+  const seq = await getV7Seq(env, opts);
+  const rand = new Uint8Array(16);
+  crypto.getRandomValues(rand);
+  return uuid.v7({
+    seq: seq,
+    random: rand,
+  });
+}
+
+function getSeq(env: Env): DurableObjectStub<Sequence> {
+  return env.SEQ.get(env.SEQ.idFromName("MAIN"));
+}
+
+async function getV7Seq(env: Env, opts: Options): Promise<number> {
+  if (typeof opts.uuidV7Seq !== "undefined" && !isNaN(opts.uuidV7Seq)) {
+    return opts.uuidV7Seq;
+  }
+  return await getSeq(env).inc();
+}
+
+async function handleRequest(request: Request, env: Env): Promise<Response> {
   const [opts, url] = await parseOptions(request);
+  if (url.pathname === "/api/v7/seq-current") {
+    const seq = await getSeq(env).load();
+    return respond(request, {
+      json: () => {
+        return JSON.stringify({ seq });
+      },
+      txt: () => {
+        return `${seq}`;
+      },
+    });
+  }
+  if (url.pathname === "/api/v7") {
+    const value = await newV7(env, opts);
+    const result = conditionUppercase(opts.uppercase, value);
+    return respond(request, {
+      json: () => {
+        return JSON.stringify({ result });
+      },
+      txt: () => {
+        return result;
+      },
+    });
+  }
   if (url.pathname === "/api/v4") {
     const result = conditionUppercase(opts.uppercase, uuid.v4());
     return respond(request, {
@@ -153,6 +205,7 @@ async function handleRequest(request: Request): Promise<Response> {
       uuidHashName: opts.uuidHashName,
       resultHash: "",
       resultRando: "",
+      resultMonotonic: "",
       currentYear: new Date().getFullYear(),
       problems: new Map(),
     };
@@ -171,6 +224,9 @@ async function handleRequest(request: Request): Promise<Response> {
       }
     };
     mp.resultRando = conditionUppercase(mp.uppercase, uuid.v4());
+
+    const v7value = await newV7(env, opts);
+    mp.resultMonotonic = conditionUppercase(mp.uppercase, v7value);
     switch (mp.uuidVersion) {
       case "v3":
         dohash(uuid.v3);
@@ -183,20 +239,23 @@ async function handleRequest(request: Request): Promise<Response> {
       `<!DOCTYPE html>
 <html lang="en-US">
 <head>
-    <meta charset="utf-8">
-	<meta name="viewport" content="width=device-width">
-	<meta name="description" content="a simple and fast toolbelt for dealing with rfc4122 uuid tokens">
-    <title>uuid ninja</title>
-	<style>
-		.problem {
-			margin-bottom: 0.8em;
-			padding: 0.25em 0.5em;
-		}
-		.problem.error {
-			background-color: #da304c;
-			color: white;
-		}
-	</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width" />
+  <meta name="description" content="a simple and fast toolbelt for dealing with rfc4122 uuid tokens" />
+  <title>uuid ninja</title>
+  <meta name="deploy-version" content="${env.VERSION.id}" />
+  <meta name="deploy-tag" content="${env.VERSION.tag}" />
+  <meta name="deploy-timestamp" content="${env.VERSION.timestamp ?? ""}" />
+  <style>
+    .problem {
+      margin-bottom: 0.8em;
+      padding: 0.25em 0.5em;
+    }
+    .problem.error {
+      background-color: #da304c;
+      color: white;
+    }
+  </style>
 </head>
 <body>${render(mp)}</body>
 </html>
@@ -216,24 +275,60 @@ async function handleRequest(request: Request): Promise<Response> {
   );
 }
 
-// make available to addEventListener
-(globalThis as any).handleRequest = async (
-  request: Request
-): Promise<Response> => {
-  try {
-    return await handleRequest(request);
-  } catch (e) {
-    return respond(
-      request,
-      {
-        txt: () => {
-          return `error: ${e}`;
-        },
-        json: () => {
-          return JSON.stringify({ error: `${e}` });
-        },
-      },
-      { status: 500, defaultct: "txt" }
-    );
+type Env = {
+  SEQ: DurableObjectNamespace<Sequence>;
+  VERSION: WorkerVersionMetadata;
+};
+
+const SEQUENCE_START = 5000;
+
+export class Sequence extends DurableObject<Env> {
+  private readonly state: DurableObjectState;
+  private seq: number;
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    this.state = ctx;
+    this.seq = NaN;
+    this.state.blockConcurrencyWhile(async () => {
+      this.seq = (await ctx.storage.get<number>("seq")) ?? SEQUENCE_START;
+    });
   }
+
+  async load(): Promise<number> {
+    return Promise.resolve(this.seq);
+  }
+
+  async inc(): Promise<number> {
+    if (isNaN(this.seq)) {
+      throw new Error(`Sequence init fault`);
+    }
+    const current = Math.max(this.seq, SEQUENCE_START);
+    const next = current + 1;
+    await this.ctx.storage.put<number>("seq", next);
+    console.log("Sequence.inc", { current, next });
+    this.seq = next;
+    return next;
+  }
+}
+
+export default {
+  async fetch(request: Request, env: Env) {
+    try {
+      return await handleRequest(request, env);
+    } catch (e) {
+      console.error("server_error", e);
+      return respond(
+        request,
+        {
+          txt: () => {
+            return `error: ${e}`;
+          },
+          json: () => {
+            return JSON.stringify({ error: `${e}` });
+          },
+        },
+        { status: 500, defaultct: "txt" }
+      );
+    }
+  },
 };

@@ -8,6 +8,7 @@ export type MainProps = {
   uuidHashName: string;
   resultHash: string;
   resultRando: string;
+  resultMonotonic: string;
   currentYear: number;
   problems: Map<
     "hash_uuid" | "uuidv4",
@@ -16,6 +17,10 @@ export type MainProps = {
 };
 
 const Main: React.FC<MainProps> = (props) => {
+  // inputChangeNoOp is a no-op for input change handlers.
+  // this is being rendered to a static page so there is no need to capture
+  // live changes.
+  const inputChangeNoOp = () => {};
   return (
     <div id="main">
       <h2>uuid ninja</h2>
@@ -39,6 +44,7 @@ const Main: React.FC<MainProps> = (props) => {
               id="uppercase"
               name="uppercase"
               checked={props.uppercase}
+              onChange={inputChangeNoOp}
             />{" "}
             uppercase
           </label>
@@ -80,6 +86,7 @@ const Main: React.FC<MainProps> = (props) => {
                   name="uuidns"
                   style={{ minWidth: "25em" }}
                   value={props.uuidHashNS}
+                  onChange={inputChangeNoOp}
                 />
               </td>
             </tr>
@@ -95,6 +102,7 @@ const Main: React.FC<MainProps> = (props) => {
                   placeholder="ex. 'www.google.com'"
                   style={{ minWidth: "25em" }}
                   value={props.uuidHashName}
+                  onChange={inputChangeNoOp}
                 />
               </td>
             </tr>
@@ -104,6 +112,10 @@ const Main: React.FC<MainProps> = (props) => {
         <fieldset name="version_four">
           <legend>uuid v4</legend>
           <pre>{props.resultRando}</pre>
+        </fieldset>
+        <fieldset name="version_seven">
+          <legend>uuid v7</legend>
+          <pre>{props.resultMonotonic}</pre>
         </fieldset>
         <br />
         <button type="submit">Submit</button>
@@ -151,9 +163,24 @@ const Main: React.FC<MainProps> = (props) => {
           <pre>
             &gt; curl https://uuid.ninja/api/v4
             <br />
-            {`{"result":"5b30ca46-9b8b-48e0-b53a-1ccd4b3adc8f"}`}
+            {`{"result":"${props.resultRando}"}`}
           </pre>
           <p>then voilà, a v4 uuid.</p>
+          <h4>v7</h4>
+          <p>to generate a v7 uuid, use the v7 endpoint:</p>
+          <pre>
+            &gt; curl https://uuid.ninja/api/v7
+            <br />
+            {`{"result":"${props.resultMonotonic}"}`}
+          </pre>
+          <p>
+            the endpoint accepts a <code>seq</code> parameter that is a number
+            that allows the providing of your own sequence.
+          </p>
+          <p>
+            if no <code>seq</code> is provided, then an internal sequence is
+            used.
+          </p>
         </div>
       </form>
       <hr />

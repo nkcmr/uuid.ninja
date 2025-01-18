@@ -18,6 +18,9 @@
       "name": "uuid-ninja",
       "route": "uuid.ninja/*",
       "vars": {},
+      "version_metadata": {
+        "binding": "VERSION"
+      },
       "durable_objects": {
         "bindings": [{ "name": "SEQ", "class_name": "Sequence" }]
       },
